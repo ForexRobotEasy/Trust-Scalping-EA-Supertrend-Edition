@@ -1,0 +1,78 @@
+
+//+------------------------------------------------------------------+
+//|                                            Trust Scalping EA                                            |
+//|                                        Supertrend Edition                                                  |
+//|                                 Developed by Forex Robot Easy Team                           |
+//|                                           forexroboteasy.com                                           |
+//+------------------------------------------------------------------+
+
+// Define the input parameters
+input double lotSize = 0.01; // Trading lot size
+input int stopLossMultiplier = 2; // Stop loss multiplier for ATR
+input int trailingStop = 15; // Trailing stop value
+input int supertrendPeriod = 10; // Supertrend period
+input double supertrendMultiplier = 3.0; // Supertrend multiplier
+
+// Initialize global variables
+double atrValue; // Average True Range value
+double supertrendValue; // Supertrend value
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   // Attach the Supertrend indicator
+   IndicatorSetInteger(0, INDICATOR_DIGITS, MarketInfo(Symbol(), MODE_DIGITS));
+   IndicatorSetInteger(0, INDICATOR_COLOR_INDEX, 0);
+   IndicatorSetDouble(0, INDICATOR_LEVELS, supertrendMultiplier);
+   IndicatorSetInteger(0, INDICATOR_LEVELS_COUNT, 1);
+   IndicatorSetInteger(0, INDICATOR_PERIOD, supertrendPeriod);
+   IndicatorSetString(0, INDICATOR_SHORTNAME, 'Supertrend');
+   IndicatorSetString(0, INDICATOR_LEVELTEXT, 'Supertrend');
+
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert advisor start function                                                       |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   // Calculate the Average True Range
+   atrValue = iATR(Symbol(), PERIOD_M1, 14, 0);
+   
+   // Calculate the Supertrend value
+   supertrendValue = iCustom(Symbol(), PERIOD_M1, 'Supertrend', supertrendPeriod, supertrendMultiplier, 0, 0);
+
+   // Check if Supertrend is above the price and there is no open position
+   if (supertrendValue > Close[1] && !PositionSelect())
+   {
+      // Open a buy position
+      OrderSend(Symbol(), OP_BUY, lotSize, Ask, 0, Bid - atrValue * stopLossMultiplier, Bid + trailingStop * MarketInfo(Symbol(), MODE_POINT), 'Trust Scalping EA Supertrend Edition', 0, 0, Green);
+   }
+
+   // Check if Supertrend is below the price and there is no open position
+   if (supertrendValue < Close[1] && !PositionSelect())
+   {
+      // Open a sell position
+      OrderSend(Symbol(), OP_SELL, lotSize, Bid, 0, Ask + atrValue * stopLossMultiplier, Ask - trailingStop * MarketInfo(Symbol(), MODE_POINT), 'Trust Scalping EA Supertrend Edition', 0, 0, Red);
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Expert advisor custom functions                                                  |
+//+------------------------------------------------------------------+
+bool PositionSelect()
+{
+   for (int i = 0; i < OrdersTotal(); i++)
+   {
+      if (OrderSelect(i, SELECT_BY_POS))
+      {
+         if (OrderSymbol() == Symbol() && OrderType() <= OP_SELL)
+            return true;
+      }
+   }
+   
+   return false;
+}
